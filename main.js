@@ -12,105 +12,167 @@ const regionGenMap = {
 };
 
 const genLimits = [151, 251, 386, 493, 649, 721, 809, 905, 1025];
-const gymPokemonLimit = [2,2,3,4,4,5,5,6];
+const gymPokemonLimit = [2, 2, 3, 4, 4, 5, 5, 6];
 
 let selectedPokemon = [];
 let maxPokemonAllowed = 0;
+let currentPokemonList = [];
 
-function showMessage(text, type = 'info') {
+function showMessage(text, type = 'info', persistent = false) {
     const messageEl = document.getElementById('message');
     messageEl.textContent = text;
-    messageEl.className = type;
+    messageEl.className = '';
+    messageEl.classList.add(type);
     messageEl.style.display = 'block';
     
-    if (type === 'success' || type === 'info') {
+    if (!persistent && (type === 'success' || type === 'info')) {
         setTimeout(() => {
             messageEl.style.display = 'none';
         }, 3000);
     }
 }
 
-document.getElementById("setup-confirm").onclick = async function() {
-    const button = this;
-    const region = document.getElementById("region-select").value;
-    const type = document.getElementById("type-select").value;
-    const gymNumber = parseInt(document.getElementById("gym-number-select").value, 10);
+function hideMessage() {
+    document.getElementById('message').style.display = 'none';
+}
 
-    // Disable button during loading
-    button.disabled = true;
-    button.textContent = 'Loading...';
-
-    try {
-        const maxGen = regionGenMap[region];
-        maxPokemonAllowed = gymPokemonLimit[gymNumber - 1];
-
-        showMessage(`Loading ${type} Pokémon from ${region.charAt(0).toUpperCase() + region.slice(1)}...`, 'info');
-        
-        // Show the pokemon selection container
-        document.getElementById('pokemon-selection').style.display = 'block';
-
-        // Get and filter Pokemon
-        const pokemonList = await getFilteredPokemon(maxGen, type);
-        
-        if (pokemonList.length === 0) {
-            showMessage(`No ${type} type Pokémon found in ${region.charAt(0).toUpperCase() + region.slice(1)}!`, 'error');
-            document.getElementById('pokemon-selection').style.display = 'none';
-        } else {
-            // Display selection UI
-            displayPokemonSelection(pokemonList, maxPokemonAllowed);
-            showMessage(`Found ${pokemonList.length} ${type} type Pokémon. Choose up to ${maxPokemonAllowed}!`, 'success');
-        }
-    } catch (error) {
-        console.error('Error loading Pokemon:', error);
-        showMessage('Error loading Pokémon. Please try again.', 'error');
-        document.getElementById('pokemon-selection').style.display = 'none';
-    } finally {
-        // Re-enable button
-        button.disabled = false;
-        button.textContent = 'Confirm Setup';
-    }
-};
-
-// Get Pokemon up to maxGen and filter by type
-async function getFilteredPokemon(maxGen, type) {
-    const limit = genLimits[maxGen - 1];
+function displayPokemonSelection(pokemonList, maxAllowed) {
+    const selectionDiv = document.getElementById('pokemon-selection');
+    currentPokemonList = pokemonList;
     
-    try {
-        const response = await fetch(`https://pokeapi.co/api/v2/pokemon?limit=${limit}`);
-        if (!response.ok) throw new Error('Failed to fetch Pokemon list');
-        
-        const data = await response.json();
-        const filtered = [];
-        
-        // Process Pokemon in smaller batches to avoid overwhelming the API
-        const batchSize = 20;
-        for (let i = 0; i < data.results.length; i += batchSize) {
-            const batch = data.results.slice(i, i + batchSize);
-            const batchPromises = batch.map(async (p) => {
-                try {
-                    const details = await fetch(p.url);
-                    if (!details.ok) throw new Error(`Failed to fetch ${p.name}`);
-                    const pokemon = await details.json();
-                    
-                    if (pokemon.types.some(t => t.type.name === type)) {
-                        return pokemon;
-                    }
-                    return null;
-                } catch (error) {
-                    console.warn(`Error fetching ${p.name}:`, error);
-                    return null;
-                }
-            });
-            
-            const batchResults = await Promise.all(batchPromises);
-            filtered.push(...batchResults.filter(p => p !== null));
-            
-            // Small delay between batches to be nice to the API
-            await new Promise(resolve => setTimeout(resolve, 300));
+    selectionDiv.innerHTML = `
+        <div class="selection-header">
+            <div class="selection-info">
+                Select up to ${maxAllowed} Pokémon for your gym team
+            </div>
+            <div class="selection-counter" id="selection-counter">
+                Selected: 0 / ${maxAllowed}
+            </div>
+        </div>
+        <div class="poke-list" id="poke-list">
+            ${pokemonList.map(pokemon => createPokemonCard(pokemon)).join('')}
+        </div>
+        <div class="selection-controls">
+            <button class="clear-selection" onclick="clearSelection()">Clear Selection</button>
+            <button class="confirm-team" id="confirm-team-btn" onclick="confirmTeam()" disabled>
+                Confirm Team
+            </button>
+        </div>
+        <div id="team-display"></div>
+    `;
+    
+    attachCardClickHandlers();
+}
+
+function createPokemonCard(pokemon) {
+    const match = pokemon.url.match(/\/pokemon\/(\d+)\//);
+    const id = match ? match[1] : '0';
+    const spriteUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+    
+    return `
+        <div class="poke-card" data-pokemon-id="${id}" data-pokemon-name="${pokemon.name}">
+            <img class="poke-sprite" src="${spriteUrl}" alt="${pokemon.name}" 
+                 onerror="this.src='https://via.placeholder.com/96?text=No+Image'">
+            <div class="poke-name">${pokemon.name}</div>
+            <div class="poke-id">#${id.padStart(3, '0')}</div>
+        </div>
+    `;
+}
+
+function attachCardClickHandlers() {
+    document.querySelectorAll('.poke-card').forEach(card => {
+        card.addEventListener('click', () => togglePokemonSelection(card));
+    });
+}
+
+function togglePokemonSelection(card) {
+    const pokemonId = card.dataset.pokemonId;
+    const pokemonName = card.dataset.pokemonName;
+    
+    if (card.classList.contains('selected')) {
+        card.classList.remove('selected');
+        selectedPokemon = selectedPokemon.filter(p => p.id !== pokemonId);
+    } else {
+        if (selectedPokemon.length >= maxPokemonAllowed) {
+            showMessage(`You can only select up to ${maxPokemonAllowed} Pokémon!`, 'warning');
+            return;
         }
-        return filtered;
-    } catch (error) {
-        console.error('Error in getFilteredPokemon:', error);
-        return [];
+        card.classList.add('selected');
+        selectedPokemon.push({
+            id: pokemonId,
+            name: pokemonName,
+            sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`
+        });
+    }
+    
+    updateSelectionCounter();
+    updateConfirmButton();
+}
+
+function updateSelectionCounter() {
+    const counter = document.getElementById('selection-counter');
+    if (counter) {
+        counter.textContent = `Selected: ${selectedPokemon.length} / ${maxPokemonAllowed}`;
     }
 }
+
+function updateConfirmButton() {
+    const confirmBtn = document.getElementById('confirm-team-btn');
+    if (confirmBtn) {
+        confirmBtn.disabled = selectedPokemon.length === 0;
+    }
+}
+
+function clearSelection() {
+    selectedPokemon = [];
+    document.querySelectorAll('.poke-card.selected').forEach(card => card.classList.remove('selected'));
+    updateSelectionCounter();
+    updateConfirmButton();
+    showMessage('Selection cleared', 'info');
+}
+
+function confirmTeam() {
+    if (selectedPokemon.length === 0) {
+        showMessage('Please select at least one Pokémon!', 'error');
+        return;
+    }
+    
+    showMessage(`Team confirmed with ${selectedPokemon.length} Pokémon!`, 'success');
+    
+    const teamDisplay = document.getElementById('team-display');
+    teamDisplay.innerHTML = `
+        <div class="team-display">
+            <h3>Your Gym Team</h3>
+            <div class="team-grid">
+                ${selectedPokemon.map(p => `
+                    <div class="team-pokemon">
+                        <img src="${p.sprite}" alt="${p.name}" 
+                             onerror="this.src='https://via.placeholder.com/64?text=No+Image'">
+                        <div class="name">${p.name}</div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+    
+    document.querySelectorAll('.poke-card').forEach(card => {
+        card.style.pointerEvents = 'none';
+        card.style.opacity = '0.6';
+    });
+    
+    document.getElementById('confirm-team-btn').disabled = true;
+    document.querySelector('.clear-selection').disabled = true;
+}
+
+async function getFilteredPokemon(maxGen, type) {
+    try {
+        const response = await fetch(`https://pokeapi.co/api/v2/type/${type.toLowerCase()}`);
+        if (!response.ok) throw new Error('Failed to fetch type data');
+        
+        const data = await response.json();
+        const maxId = genLimits[maxGen - 1];
+        
+        return data.pokemon
+            .map(p => p.pokemon)
+            .filter(p => {
+                const match = p.url.match(/\/pokemon\/(\d+)\//);
