@@ -1,0 +1,44 @@
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f0f8ff;
+    margin: 0;
+    padding: 20px;
+}
+
+h1, h2 {
+    color: #2d72d9;
+}
+
+.poke-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.poke-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    padding: 12px;
+    text-align: center;
+    width: 120px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.poke-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 16px rgba(45,114,217,0.15);
+}
+
+.poke-sprite {
+    width: 72px;
+    height: 72px;
+    margin-bottom: 8px;
+}
+
+.poke-name {
+    font-weight: bold;
+    color: #333;
+    text-transform: capitalize;
+}
