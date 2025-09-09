@@ -106,4 +106,11 @@ async function getFilteredPokemon(maxGen, type) {
             filtered.push(...batchResults.filter(p => p !== null));
             
             // Small delay between batches to be nice to the API
-            await new Promise(resolve =>
+            await new Promise(resolve => setTimeout(resolve, 300));
+        }
+        return filtered;
+    } catch (error) {
+        console.error('Error in getFilteredPokemon:', error);
+        return [];
+    }
+}
