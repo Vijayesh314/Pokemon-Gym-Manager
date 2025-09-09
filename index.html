@@ -1,70 +1,663 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <title>Pokemon Gym Manager</title>
-        <link rel="stylesheet" href="style.css">
-    </head>
-    <body>
-        <h1>Pokemon Gym Manager</h1>
-        <div id="gym-setup">
-            <h2>Gym Setup</h2>
-            <label>Region:
-                <select id="region-select">
-                    <option value="kanto">Kanto</option>
-                    <option value="johto">Johto</option>
-                    <option value="hoenn">Hoenn</option>
-                    <option value="sinnoh">Sinnoh</option> 
-                    <option value="unova">Unova</option>
-                    <option value="kalos">Kalos</option>
-                    <option value="alola">Alola</option>
-                    <option value="galar">Galar</option>
-                    <option value="paldea">Paldea</option>
-                </select>
-            </label>
-            <label>Type Specialist:
-                <select id="type-select">
-                    <option value="normal">Normal</option>
-                    <option value="fire">Fire</option>
-                    <option value="water">Water</option>
-                    <option value="grass">Grass</option>
-                    <option value="electric">Electric</option>
-                    <option value="ice">Ice</option>
-                    <option value="fighting">Fighting</option>
-                    <option value="poison">Poison</option>
-                    <option value="ground">Ground</option>
-                    <option value="flying">Flying</option>
-                    <option value="psychic">Psychic</option>
-                    <option value="bug">Bug</option>
-                    <option value="rock">Rock</option>
-                    <option value="ghost">Ghost</option>
-                    <option value="dragon">Dragon</option>
-                    <option value="dark">Dark</option>
-                    <option value="steel">Steel</option>
-                    <option value="fairy">Fairy</option>
-                </select>
-            </label>
-            <label>Gym Number:
-                <select id="gym-number-select">
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                    <option value="5">5</option>
-                    <option value="6">6</option>
-                    <option value="7">7</option>
-                    <option value="8">8</option>
-                </select>
-            </label>
-            <button id="setup-confirm">Confirm Setup</button>
-        </div>
-        <div id="message"></div>
-        <div id="pokemon-selection">
-            <div class="loading">Loading Pokémon...</div>
-        </div>
-        <div id="ai-challenge">
-            <!--TODO: AI challenge results UI-->
-        </div>
-        <script src="main.js"></script>
-    </body>
+<head>
+    <meta charset="UTF-8">
+    <title>Pokemon Gym Manager</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #2d72d9;
+        }
+
+        #gym-setup {
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #gym-setup label {
+            display: block;
+            margin: 15px 0;
+            font-weight: 500;
+            color: #333;
+        }
+
+        #gym-setup select, #gym-setup button {
+            padding: 10px 15px;
+            margin: 5px 0;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            width: 100%;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        #gym-setup select:focus {
+            outline: none;
+            border-color: #2d72d9;
+        }
+
+        #gym-setup button {
+            background: linear-gradient(135deg, #2d72d9, #1f5bb3);
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            margin-top: 20px;
+        }
+
+        #gym-setup button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(45, 114, 217, 0.3);
+        }
+
+        #gym-setup button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .poke-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+            padding: 10px;
+        }
+
+        .poke-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 3px solid transparent;
+            position: relative;
+        }
+
+        .poke-card:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 8px 24px rgba(45,114,217,0.2);
+        }
+
+        .poke-card.selected {
+            border: 3px solid #2d72d9;
+            background: linear-gradient(135deg, #e6f3ff, #f0f8ff);
+        }
+
+        .poke-card.selected::after {
+            content: '✓';
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #2d72d9;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .poke-sprite {
+            width: 96px;
+            height: 96px;
+            margin-bottom: 10px;
+            image-rendering: pixelated;
+        }
+
+        .poke-name {
+            font-weight: bold;
+            color: #333;
+            text-transform: capitalize;
+            font-size: 14px;
+        }
+
+        .poke-id {
+            color: #666;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        #message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px auto;
+            max-width: 600px;
+            display: none;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        #message.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        #message.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        #message.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        #message.warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+
+        #pokemon-selection, #ai-challenge {
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            margin: 20px auto;
+            max-width: 1200px;
+            display: none;
+        }
+
+        .loading {
+            text-align: center;
+            color: #666;
+            padding: 40px;
+            font-size: 18px;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin-left: 10px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #2d72d9;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .selection-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .selection-info {
+            font-size: 18px;
+            color: #333;
+        }
+
+        .selection-counter {
+            background: #2d72d9;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        .selection-controls {
+            margin: 20px 0;
+            text-align: center;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .selection-controls button {
+            padding: 12px 30px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .confirm-team {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .confirm-team:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+
+        .confirm-team:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .clear-selection {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+        }
+
+        .clear-selection:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+        }
+
+        .team-display {
+            background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+
+        .team-display h3 {
+            color: #2d72d9;
+            margin-bottom: 15px;
+        }
+
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 15px;
+        }
+
+        .team-pokemon {
+            background: white;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .team-pokemon img {
+            width: 64px;
+            height: 64px;
+        }
+
+        .team-pokemon .name {
+            font-weight: bold;
+            text-transform: capitalize;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏆 Pokemon Gym Manager 🏆</h1>
+    
+    <div id="gym-setup">
+        <h2>⚡ Gym Setup</h2>
+        <label>Region:
+            <select id="region-select">
+                <option value="kanto">Kanto</option>
+                <option value="johto">Johto</option>
+                <option value="hoenn">Hoenn</option>
+                <option value="sinnoh">Sinnoh</option>
+                <option value="unova">Unova</option>
+                <option value="kalos">Kalos</option>
+                <option value="alola">Alola</option>
+                <option value="galar">Galar</option>
+                <option value="paldea">Paldea</option>
+            </select>
+        </label>
+        
+        <label>Type Specialist:
+            <select id="type-select">
+                <option value="normal">Normal</option>
+                <option value="fire">Fire</option>
+                <option value="water">Water</option>
+                <option value="grass">Grass</option>
+                <option value="electric">Electric</option>
+                <option value="ice">Ice</option>
+                <option value="fighting">Fighting</option>
+                <option value="poison">Poison</option>
+                <option value="ground">Ground</option>
+                <option value="flying">Flying</option>
+                <option value="psychic">Psychic</option>
+                <option value="bug">Bug</option>
+                <option value="rock">Rock</option>
+                <option value="ghost">Ghost</option>
+                <option value="dragon">Dragon</option>
+                <option value="dark">Dark</option>
+                <option value="steel">Steel</option>
+                <option value="fairy">Fairy</option>
+            </select>
+        </label>
+        
+        <label>Gym Number:
+            <select id="gym-number-select">
+                <option value="1">1 (2 Pokemon)</option>
+                <option value="2">2 (2 Pokemon)</option>
+                <option value="3">3 (3 Pokemon)</option>
+                <option value="4">4 (4 Pokemon)</option>
+                <option value="5">5 (4 Pokemon)</option>
+                <option value="6">6 (5 Pokemon)</option>
+                <option value="7">7 (5 Pokemon)</option>
+                <option value="8">8 (6 Pokemon)</option>
+            </select>
+        </label>
+        
+        <button id="setup-confirm">Confirm Setup</button>
+    </div>
+
+    <div id="message"></div>
+
+    <div id="pokemon-selection">
+        <div class="loading">Loading Pokémon...</div>
+    </div>
+
+    <div id="ai-challenge">
+        <!-- AI challenge results will go here -->
+    </div>
+
+    <script>
+        // Fixed region mapping with proper capitalization
+        const regionGenMap = {
+            "kanto": 1,
+            "johto": 2,
+            "hoenn": 3,
+            "sinnoh": 4,
+            "unova": 5,
+            "kalos": 6,
+            "alola": 7,
+            "galar": 8,
+            "paldea": 9
+        };
+
+        const genLimits = [151, 251, 386, 493, 649, 721, 809, 905, 1025];
+        const gymPokemonLimit = [2, 2, 3, 4, 4, 5, 5, 6];
+        
+        let selectedPokemon = [];
+        let maxPokemonAllowed = 0;
+        let currentPokemonList = [];
+
+        function showMessage(text, type = 'info', persistent = false) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = ''; // Clear all classes first
+            messageEl.classList.add(type); // Add the appropriate class
+            messageEl.style.display = 'block';
+            
+            // Only auto-hide for success and info messages that aren't persistent
+            if (!persistent && (type === 'success' || type === 'info')) {
+                setTimeout(() => {
+                    messageEl.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        function hideMessage() {
+            const messageEl = document.getElementById('message');
+            messageEl.style.display = 'none';
+        }
+
+        function displayPokemonSelection(pokemonList, maxAllowed) {
+            const selectionDiv = document.getElementById('pokemon-selection');
+            currentPokemonList = pokemonList;
+            
+            // Clear loading state and build the UI
+            selectionDiv.innerHTML = `
+                <div class="selection-header">
+                    <div class="selection-info">
+                        Select up to ${maxAllowed} Pokémon for your gym team
+                    </div>
+                    <div class="selection-counter" id="selection-counter">
+                        Selected: 0 / ${maxAllowed}
+                    </div>
+                </div>
+                <div class="poke-list" id="poke-list">
+                    ${pokemonList.map(pokemon => createPokemonCard(pokemon)).join('')}
+                </div>
+                <div class="selection-controls">
+                    <button class="clear-selection" onclick="clearSelection()">Clear Selection</button>
+                    <button class="confirm-team" id="confirm-team-btn" onclick="confirmTeam()" disabled>
+                        Confirm Team
+                    </button>
+                </div>
+                <div id="team-display"></div>
+            `;
+            
+            // Add click handlers to all cards
+            attachCardClickHandlers();
+        }
+
+        function createPokemonCard(pokemon) {
+            // Extract ID from URL
+            const match = pokemon.url.match(/\/pokemon\/(\d+)\//);
+            const id = match ? match[1] : '0';
+            const spriteUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+            
+            return `
+                <div class="poke-card" data-pokemon-id="${id}" data-pokemon-name="${pokemon.name}">
+                    <img class="poke-sprite" src="${spriteUrl}" alt="${pokemon.name}" onerror="this.src='https://via.placeholder.com/96?text=No+Image'">
+                    <div class="poke-name">${pokemon.name}</div>
+                    <div class="poke-id">#${id.padStart(3, '0')}</div>
+                </div>
+            `;
+        }
+
+        function attachCardClickHandlers() {
+            const cards = document.querySelectorAll('.poke-card');
+            cards.forEach(card => {
+                card.addEventListener('click', function() {
+                    togglePokemonSelection(this);
+                });
+            });
+        }
+
+        function togglePokemonSelection(card) {
+            const pokemonId = card.dataset.pokemonId;
+            const pokemonName = card.dataset.pokemonName;
+            
+            if (card.classList.contains('selected')) {
+                // Deselect
+                card.classList.remove('selected');
+                selectedPokemon = selectedPokemon.filter(p => p.id !== pokemonId);
+            } else {
+                // Check if we can select more
+                if (selectedPokemon.length >= maxPokemonAllowed) {
+                    showMessage(`You can only select up to ${maxPokemonAllowed} Pokémon!`, 'warning');
+                    return;
+                }
+                // Select
+                card.classList.add('selected');
+                selectedPokemon.push({
+                    id: pokemonId,
+                    name: pokemonName,
+                    sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`
+                });
+            }
+            
+            updateSelectionCounter();
+            updateConfirmButton();
+        }
+
+        function updateSelectionCounter() {
+            const counter = document.getElementById('selection-counter');
+            if (counter) {
+                counter.textContent = `Selected: ${selectedPokemon.length} / ${maxPokemonAllowed}`;
+            }
+        }
+
+        function updateConfirmButton() {
+            const confirmBtn = document.getElementById('confirm-team-btn');
+            if (confirmBtn) {
+                confirmBtn.disabled = selectedPokemon.length === 0;
+            }
+        }
+
+        function clearSelection() {
+            selectedPokemon = [];
+            document.querySelectorAll('.poke-card.selected').forEach(card => {
+                card.classList.remove('selected');
+            });
+            updateSelectionCounter();
+            updateConfirmButton();
+            showMessage('Selection cleared', 'info');
+        }
+
+        function confirmTeam() {
+            if (selectedPokemon.length === 0) {
+                showMessage('Please select at least one Pokémon!', 'error');
+                return;
+            }
+            
+            showMessage(`Team confirmed with ${selectedPokemon.length} Pokémon!`, 'success');
+            
+            // Display the team
+            const teamDisplay = document.getElementById('team-display');
+            teamDisplay.innerHTML = `
+                <div class="team-display">
+                    <h3>Your Gym Team</h3>
+                    <div class="team-grid">
+                        ${selectedPokemon.map(p => `
+                            <div class="team-pokemon">
+                                <img src="${p.sprite}" alt="${p.name}" onerror="this.src='https://via.placeholder.com/64?text=No+Image'">
+                                <div class="name">${p.name}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            
+            // Disable selection after confirming
+            document.querySelectorAll('.poke-card').forEach(card => {
+                card.style.pointerEvents = 'none';
+                card.style.opacity = '0.6';
+            });
+            
+            document.getElementById('confirm-team-btn').disabled = true;
+            document.querySelector('.clear-selection').disabled = true;
+        }
+
+        // Get Pokemon up to maxGen and filter by type
+        async function getFilteredPokemon(maxGen, type) {
+            try {
+                // Get all Pokémon of the type
+                const response = await fetch(`https://pokeapi.co/api/v2/type/${type.toLowerCase()}`);
+                if (!response.ok) throw new Error('Failed to fetch type data');
+                
+                const data = await response.json();
+                
+                // Get Pokémon up to maxGen
+                const maxId = genLimits[maxGen - 1];
+                const filtered = data.pokemon
+                    .map(p => p.pokemon)
+                    .filter(p => {
+                        // Extract ID from URL
+                        const match = p.url.match(/\/pokemon\/(\d+)\//);
+                        const id = match ? parseInt(match[1], 10) : null;
+                        return id && id <= maxId;
+                    })
+                    .sort((a, b) => {
+                        // Sort by ID for better display
+                        const idA = parseInt(a.url.match(/\/pokemon\/(\d+)\//)[1]);
+                        const idB = parseInt(b.url.match(/\/pokemon\/(\d+)\//)[1]);
+                        return idA - idB;
+                    });
+                
+                console.log(`Filtered ${filtered.length} Pokémon of type ${type}`);
+                return filtered;
+            } catch (error) {
+                console.error('Error in getFilteredPokemon:', error);
+                return [];
+            }
+        }
+
+        document.getElementById("setup-confirm").onclick = async function() {
+            const button = this;
+            const regionInput = document.getElementById("region-select").value;
+            const region = regionInput.toLowerCase(); // Ensure lowercase for map lookup
+            const type = document.getElementById("type-select").value;
+            const gymNumber = parseInt(document.getElementById("gym-number-select").value, 10);
+            
+            // Reset previous selection
+            selectedPokemon = [];
+            hideMessage();
+            
+            // Disable button during loading
+            button.disabled = true;
+            button.textContent = 'Loading...';
+            
+            try {
+                const maxGen = regionGenMap[region];
+                if (!maxGen) {
+                    throw new Error(`Invalid region: ${region}`);
+                }
+                
+                maxPokemonAllowed = gymPokemonLimit[gymNumber - 1];
+                
+                // Capitalize region name for display
+                const regionDisplay = region.charAt(0).toUpperCase() + region.slice(1);
+                showMessage(`Loading ${type} Pokémon from ${regionDisplay}...`, 'info', true);
+                
+                // Show the pokemon selection container with loading state
+                const selectionDiv = document.getElementById('pokemon-selection');
+                selectionDiv.style.display = 'block';
+                selectionDiv.innerHTML = '<div class="loading">Loading Pokémon...</div>';
+                
+                // Get and filter Pokemon
+                const pokemonList = await getFilteredPokemon(maxGen, type);
+                
+                if (pokemonList.length === 0) {
+                    showMessage(`No ${type} type Pokémon found in ${regionDisplay}!`, 'error', true);
+                    selectionDiv.style.display = 'none';
+                } else {
+                    // Display selection UI
+                    displayPokemonSelection(pokemonList, maxPokemonAllowed);
+                    
+                    // Check if we're using mock data
+                    const isMockData = pokemonList.some(p => p.name === 'ditto' || p.name === 'eevee');
+                    if (isMockData) {
+                        showMessage(`API unavailable - showing sample Pokémon. Choose up to ${maxPokemonAllowed}!`, 'warning');
+                    } else {
+                        showMessage(`Found ${pokemonList.length} ${type} type Pokémon. Choose up to ${maxPokemonAllowed}!`, 'success');
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading Pokemon:', error);
+                showMessage('Error loading Pokémon. Please try again.', 'error', true);
+                document.getElementById('pokemon-selection').style.display = 'none';
+            } finally {
+                // Re-enable button
+                button.disabled = false;
+                button.textContent = 'Confirm Setup';
+            }
+        };
+    </script>
+</body>
 </html>
