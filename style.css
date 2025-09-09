@@ -1,159 +1,310 @@
 body {
     font-family: 'Segoe UI', Arial, sans-serif;
-    background: #f0f8ff;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     margin: 0;
     padding: 20px;
+    min-height: 100vh;
 }
 
-h1, h2 {
+h1 {
+    color: white;
+    text-align: center;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    margin-bottom: 30px;
+}
+
+h2 {
     color: #2d72d9;
 }
 
 #gym-setup {
     background: white;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    padding: 25px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
     margin-bottom: 20px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 #gym-setup label {
     display: block;
-    margin: 10px 0;
+    margin: 15px 0;
+    font-weight: 500;
+    color: #333;
 }
 
 #gym-setup select, #gym-setup button {
-    padding: 8px 12px;
+    padding: 10px 15px;
     margin: 5px 0;
-    border-radius: 6px;
-    border: 1px solid #ddd;
+    border-radius: 8px;
+    border: 2px solid #e0e0e0;
+    width: 100%;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+#gym-setup select:focus {
+    outline: none;
+    border-color: #2d72d9;
 }
 
 #gym-setup button {
-    background: #2d72d9;
+    background: linear-gradient(135deg, #2d72d9, #1f5bb3);
     color: white;
     cursor: pointer;
     font-size: 16px;
+    font-weight: bold;
+    border: none;
+    margin-top: 20px;
 }
 
-#gym-setup button:hover {
-    background: #1f5bb3;
+#gym-setup button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(45, 114, 217, 0.3);
 }
 
 #gym-setup button:disabled {
     background: #ccc;
     cursor: not-allowed;
+    transform: none;
 }
 
 .poke-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 20px;
     margin-top: 20px;
+    padding: 10px;
 }
 
 .poke-card {
-    background: #fff;
+    background: white;
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-    padding: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    padding: 15px;
     text-align: center;
-    width: 120px;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-    border: 2px solid transparent;
+    transition: all 0.3s;
+    border: 3px solid transparent;
+    position: relative;
 }
 
 .poke-card:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 16px rgba(45,114,217,0.15);
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 8px 24px rgba(45,114,217,0.2);
 }
 
 .poke-card.selected {
-    border: 2px solid #2d72d9;
-    background: #e6f3ff;
+    border: 3px solid #2d72d9;
+    background: linear-gradient(135deg, #e6f3ff, #f0f8ff);
+}
+
+.poke-card.selected::after {
+    content: '✓';
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: #2d72d9;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
 }
 
 .poke-sprite {
-    width: 72px;
-    height: 72px;
-    margin-bottom: 8px;
+    width: 96px;
+    height: 96px;
+    margin-bottom: 10px;
+    image-rendering: pixelated;
 }
 
 .poke-name {
     font-weight: bold;
     color: #333;
     text-transform: capitalize;
+    font-size: 14px;
+}
+
+.poke-id {
+    color: #666;
+    font-size: 12px;
+    margin-top: 5px;
 }
 
 #message {
-    background: #fff3cd;
-    border: 1px solid #ffeaa7;
-    padding: 10px;
-    border-radius: 6px;
-    margin: 10px 0;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 20px auto;
+    max-width: 600px;
     display: none;
+    font-weight: 500;
+    text-align: center;
+}
+
+#message.info {
+    background: #d1ecf1;
+    border: 1px solid #bee5eb;
+    color: #0c5460;
 }
 
 #message.error {
     background: #f8d7da;
-    border-color: #f5c6cb;
+    border: 1px solid #f5c6cb;
     color: #721c24;
 }
 
 #message.success {
     background: #d4edda;
-    border-color: #c3e6cb;
+    border: 1px solid #c3e6cb;
     color: #155724;
+}
+
+#message.warning {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
 }
 
 #pokemon-selection, #ai-challenge {
     background: white;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-    margin-bottom: 20px;
+    padding: 25px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    margin: 20px auto;
+    max-width: 1200px;
     display: none;
 }
 
 .loading {
     text-align: center;
     color: #666;
+    padding: 40px;
+    font-size: 18px;
+}
+
+.loading::after {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin-left: 10px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #2d72d9;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.selection-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.selection-info {
+    font-size: 18px;
+    color: #333;
+}
+
+.selection-counter {
+    background: #2d72d9;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: bold;
 }
 
 .selection-controls {
     margin: 20px 0;
     text-align: center;
+    padding-top: 20px;
+    border-top: 2px solid #e0e0e0;
 }
 
 .selection-controls button {
-    padding: 10px 20px;
+    padding: 12px 30px;
     margin: 0 10px;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 16px;
+    font-weight: bold;
+    transition: all 0.3s;
 }
 
 .confirm-team {
-    background: #28a745;
+    background: linear-gradient(135deg, #28a745, #20c997);
     color: white;
 }
 
-.confirm-team:hover {
-    background: #218838;
+.confirm-team:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
 }
 
 .confirm-team:disabled {
     background: #ccc;
     cursor: not-allowed;
+    transform: none;
 }
 
 .clear-selection {
-    background: #dc3545;
+    background: linear-gradient(135deg, #dc3545, #c82333);
     color: white;
 }
 
 .clear-selection:hover {
-    background: #c82333;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.team-display {
+    background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+    padding: 20px;
+    border-radius: 12px;
+    margin-top: 20px;
+}
+
+.team-display h3 {
+    color: #2d72d9;
+    margin-bottom: 15px;
+}
+
+.team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 15px;
+}
+
+.team-pokemon {
+    background: white;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.team-pokemon img {
+    width: 64px;
+    height: 64px;
+}
+
+.team-pokemon .name {
+    font-weight: bold;
+    text-transform: capitalize;
+    font-size: 12px;
+    margin-top: 5px;
 }
