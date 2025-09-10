@@ -308,3 +308,295 @@ h2 {
     font-size: 12px;
     margin-top: 5px;
 }
+
+/* AI Challenge Styles */
+.difficulty-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+.difficulty-btn {
+    padding: 12px 25px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.difficulty-btn[data-difficulty="easy"] {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.difficulty-btn[data-difficulty="normal"] {
+    background: linear-gradient(135deg, #ffc107, #fd7e14);
+    color: white;
+}
+
+.difficulty-btn[data-difficulty="hard"] {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+}
+
+.difficulty-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.battle-btn {
+    background: linear-gradient(135deg, #6f42c1, #e83e8c);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 20px auto;
+    display: block;
+    transition: all 0.3s;
+}
+
+.battle-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(111, 66, 193, 0.3);
+}
+
+/* Battle Arena Styles */
+#battle-arena {
+    background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+    color: white;
+    padding: 25px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    margin: 20px auto;
+    max-width: 1400px;
+}
+
+.battle-status {
+    text-align: center;
+    margin-bottom: 25px;
+    padding: 15px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 8px;
+}
+
+.battle-info {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.battle-field {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 30px;
+    margin: 30px 0;
+    align-items: start;
+}
+
+.player-section, .ai-section {
+    background: rgba(255,255,255,0.05);
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid rgba(255,255,255,0.1);
+}
+
+.vs-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.vs-indicator {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    color: white;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(255,107,107,0.4);
+}
+
+.battle-log {
+    background: rgba(0,0,0,0.3);
+    padding: 15px;
+    border-radius: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    width: 300px;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.battle-team {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+.battle-pokemon {
+    background: rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    border: 2px solid transparent;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.battle-pokemon.active {
+    border-color: #ffd700;
+    background: rgba(255,215,0,0.2);
+    box-shadow: 0 0 15px rgba(255,215,0,0.5);
+}
+
+.battle-pokemon.fainted {
+    opacity: 0.3;
+    filter: grayscale(100%);
+}
+
+.battle-pokemon img {
+    width: 64px;
+    height: 64px;
+}
+
+.battle-pokemon .name {
+    font-size: 12px;
+    font-weight: bold;
+    margin-top: 5px;
+}
+
+.battle-pokemon .hp-bar {
+    background: #333;
+    height: 8px;
+    border-radius: 4px;
+    margin-top: 5px;
+    overflow: hidden;
+}
+
+.battle-pokemon .hp-fill {
+    background: linear-gradient(90deg, #ff4757, #ffa502, #2ed573);
+    height: 100%;
+    transition: width 0.3s;
+    border-radius: 4px;
+}
+
+.battle-controls {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin: 30px 0;
+}
+
+.battle-action {
+    padding: 12px 25px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+#attack-btn {
+    background: linear-gradient(135deg, #ff4757, #ff3838);
+    color: white;
+}
+
+#defend-btn {
+    background: linear-gradient(135deg, #3c40c6, #2f3542);
+    color: white;
+}
+
+#switch-btn {
+    background: linear-gradient(135deg, #00d2d3, #01a3a4);
+    color: white;
+}
+
+.battle-action:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.battle-action:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.switch-menu {
+    position: absolute;
+    background: white;
+    color: black;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    z-index: 1000;
+    margin-top: 10px;
+}
+
+.switch-option {
+    padding: 8px 15px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.switch-option:hover {
+    background: #f0f0f0;
+}
+
+.switch-option.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.battle-result {
+    text-align: center;
+    padding: 30px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 12px;
+    margin-top: 20px;
+}
+
+.battle-result h3 {
+    font-size: 28px;
+    margin-bottom: 15px;
+}
+
+.battle-result.victory h3 {
+    color: #2ed573;
+}
+
+.battle-result.defeat h3 {
+    color: #ff4757;
+}
+
+@media (max-width: 768px) {
+    .battle-field {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .difficulty-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .battle-controls {
+        flex-direction: column;
+        align-items: center;
+    }
+}
