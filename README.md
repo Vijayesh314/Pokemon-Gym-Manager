@@ -1,0 +1,1 @@
+Pokemon Gym Manager is a creative web based game where the user is in charge of creating the lineup of their team based on region, type, and which number gym they are. They can then choose the difficulty of the AI that challenges them, and they fight.
