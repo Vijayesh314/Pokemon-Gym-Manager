@@ -1,408 +1,339 @@
-// Fixed region mapping with proper capitalization
-const regionGenMap = {
-    "kanto": 1,
-    "johto": 2,
-    "hoenn": 3,
-    "sinnoh": 4,
-    "unova": 5,
-    "kalos": 6,
-    "alola": 7,
-    "galar": 8,
-    "paldea": 9
-};
-
-const genLimits = [151, 251, 386, 493, 649, 721, 809, 905, 1025];
-const gymPokemonLimit = [2, 2, 3, 4, 4, 5, 5, 6];
-
-let selectedPokemon = [];
-let maxPokemonAllowed = 0;
-let currentPokemonList = [];
-let aiTeam = [];
-let battleState = {
-    turn: 1,
-    phase: 'player', // 'player' or 'ai'
-    playerActivePokemon: 0,
-    aiActivePokemon: 0,
-    playerTeam: [],
-    aiTeam: [],
-    battleLog: []
-};
-
-function showMessage(text, type = 'info', persistent = false) {
-    const messageEl = document.getElementById('message');
-    messageEl.textContent = text;
-    messageEl.className = ''; // Clear all classes first
-    messageEl.classList.add(type); // Add the appropriate class
-    messageEl.style.display = 'block';
-    
-    // Only auto-hide for success and info messages that aren't persistent
-    if (!persistent && (type === 'success' || type === 'info')) {
-        setTimeout(() => {
-            messageEl.style.display = 'none';
-        }, 3000);
+// Pokemon API-based battle system
+class PokemonAPIBattleSystem {
+    constructor() {
+        this.cache = {
+            pokemon: new Map(),
+            moves: new Map(),
+            types: new Map()
+        };
     }
-}
 
-function hideMessage() {
-    const messageEl = document.getElementById('message');
-    messageEl.style.display = 'none';
-}
-
-function displayPokemonSelection(pokemonList, maxAllowed) {
-    const selectionDiv = document.getElementById('pokemon-selection');
-    currentPokemonList = pokemonList;
-    
-    // Clear loading state and build the UI
-    selectionDiv.innerHTML = `
-        <div class="selection-header">
-            <div class="selection-info">
-                Select up to ${maxAllowed} Pokémon for your gym team
-            </div>
-            <div class="selection-counter" id="selection-counter">
-                Selected: 0 / ${maxAllowed}
-            </div>
-        </div>
-        <div class="poke-list" id="poke-list">
-            ${pokemonList.map(pokemon => createPokemonCard(pokemon)).join('')}
-        </div>
-        <div class="selection-controls">
-            <button class="clear-selection" onclick="clearSelection()">Clear Selection</button>
-            <button class="confirm-team" id="confirm-team-btn" onclick="confirmTeam()" disabled>
-                Confirm Team
-            </button>
-        </div>
-        <div id="team-display"></div>
-    `;
-    
-    // Add click handlers to all cards
-    attachCardClickHandlers();
-}
-
-function createPokemonCard(pokemon) {
-    // Extract ID from URL
-    const match = pokemon.url.match(/\/pokemon\/(\d+)\//);
-    const id = match ? match[1] : '0';
-    const spriteUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
-    
-    return `
-        <div class="poke-card" data-pokemon-id="${id}" data-pokemon-name="${pokemon.name}">
-            <img class="poke-sprite" src="${spriteUrl}" alt="${pokemon.name}" onerror="this.src='https://via.placeholder.com/96?text=No+Image'">
-            <div class="poke-name">${pokemon.name}</div>
-            <div class="poke-id">#${id.padStart(3, '0')}</div>
-        </div>
-    `;
-}
-
-function attachCardClickHandlers() {
-    const cards = document.querySelectorAll('.poke-card');
-    cards.forEach(card => {
-        card.addEventListener('click', function() {
-            togglePokemonSelection(this);
-        });
-    });
-}
-
-function togglePokemonSelection(card) {
-    const pokemonId = card.dataset.pokemonId;
-    const pokemonName = card.dataset.pokemonName;
-    
-    if (card.classList.contains('selected')) {
-        // Deselect
-        card.classList.remove('selected');
-        selectedPokemon = selectedPokemon.filter(p => p.id !== pokemonId);
-    } else {
-        // Check if we can select more
-        if (selectedPokemon.length >= maxPokemonAllowed) {
-            showMessage(`You can only select up to ${maxPokemonAllowed} Pokémon!`, 'warning');
-            return;
+    // Fetch complete Pokemon data including moves and types
+    async fetchPokemonData(pokemonId) {
+        if (this.cache.pokemon.has(pokemonId)) {
+            return this.cache.pokemon.get(pokemonId);
         }
-        // Select
-        card.classList.add('selected');
-        selectedPokemon.push({
-            id: pokemonId,
-            name: pokemonName,
-            sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`
-        });
-    }
-    
-    updateSelectionCounter();
-    updateConfirmButton();
-}
 
-function updateSelectionCounter() {
-    const counter = document.getElementById('selection-counter');
-    if (counter) {
-        counter.textContent = `Selected: ${selectedPokemon.length} / ${maxPokemonAllowed}`;
-    }
-}
-
-function updateConfirmButton() {
-    const confirmBtn = document.getElementById('confirm-team-btn');
-    if (confirmBtn) {
-        confirmBtn.disabled = selectedPokemon.length === 0;
-    }
-}
-
-function clearSelection() {
-    selectedPokemon = [];
-    document.querySelectorAll('.poke-card.selected').forEach(card => {
-        card.classList.remove('selected');
-    });
-    updateSelectionCounter();
-    updateConfirmButton();
-    showMessage('Selection cleared', 'info');
-}
-
-function confirmTeam() {
-    if (selectedPokemon.length === 0) {
-        showMessage('Please select at least one Pokémon!', 'error');
-        return;
-    }
-    
-    showMessage(`Team confirmed with ${selectedPokemon.length} Pokémon!`, 'success');
-    
-    // Display the team
-    const teamDisplay = document.getElementById('team-display');
-    teamDisplay.innerHTML = `
-        <div class="team-display">
-            <h3>Your Gym Team</h3>
-            <div class="team-grid">
-                ${selectedPokemon.map(p => `
-                    <div class="team-pokemon">
-                        <img src="${p.sprite}" alt="${p.name}" onerror="this.src='https://via.placeholder.com/64?text=No+Image'">
-                        <div class="name">${p.name}</div>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    `;
-    
-    // Disable selection after confirming
-    document.querySelectorAll('.poke-card').forEach(card => {
-        card.style.pointerEvents = 'none';
-        card.style.opacity = '0.6';
-    });
-    
-    document.getElementById('confirm-team-btn').disabled = true;
-    document.querySelector('.clear-selection').disabled = true;
-    
-    // Show AI challenge section
-    document.getElementById('ai-challenge').style.display = 'block';
-    setupAIChallenge();
-}
-
-// Get Pokemon up to maxGen and filter by type
-async function getFilteredPokemon(maxGen, type) {
-    try {
-        // Get all Pokémon of the type
-        const response = await fetch(`https://pokeapi.co/api/v2/type/${type.toLowerCase()}`);
-        if (!response.ok) throw new Error('Failed to fetch type data');
-        
-        const data = await response.json();
-        
-        // Get Pokémon up to maxGen
-        const maxId = genLimits[maxGen - 1];
-        const filtered = data.pokemon
-            .map(p => p.pokemon)
-            .filter(p => {
-                // Extract ID from URL
-                const match = p.url.match(/\/pokemon\/(\d+)\//);
-                const id = match ? parseInt(match[1], 10) : null;
-                return id && id <= maxId;
-            })
-            .sort((a, b) => {
-                // Sort by ID for better display
-                const idA = parseInt(a.url.match(/\/pokemon\/(\d+)\//)[1]);
-                const idB = parseInt(b.url.match(/\/pokemon\/(\d+)\//)[1]);
-                return idA - idB;
-            });
-        
-        console.log(`Filtered ${filtered.length} Pokémon of type ${type}`);
-        return filtered;
-    } catch (error) {
-        console.error('Error in getFilteredPokemon:', error);
-        return [];
-    }
-}
-
-// AI Challenge System
-function setupAIChallenge() {
-    const difficultyBtns = document.querySelectorAll('.difficulty-btn');
-    difficultyBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const difficulty = this.dataset.difficulty;
-            generateAITeam(difficulty);
-        });
-    });
-    
-    document.getElementById('start-battle').addEventListener('click', initializeBattle);
-    document.getElementById('new-battle').addEventListener('click', resetToAISelection);
-}
-
-async function generateAITeam(difficulty) {
-    const difficultySettings = {
-        easy: { teamSize: Math.min(selectedPokemon.length - 1, 3), levelRange: [20, 35] },
-        normal: { teamSize: selectedPokemon.length, levelRange: [30, 50] },
-        hard: { teamSize: selectedPokemon.length + 1, levelRange: [45, 65] }
-    };
-    
-    const settings = difficultySettings[difficulty];
-    showMessage(`Generating ${difficulty} AI team...`, 'info');
-    
-    try {
-        // Get random Pokemon for AI (different types than player)
-        const availableTypes = ['normal', 'fire', 'water', 'grass', 'electric', 'psychic', 'rock', 'fighting'];
-        const aiType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
-        
-        const aiPokemonPool = await getFilteredPokemon(4, aiType); // Use first 4 gens for variety
-        if (aiPokemonPool.length === 0) {
-            throw new Error('Could not generate AI team');
-        }
-        
-        // Randomly select Pokemon for AI team
-        aiTeam = [];
-        const shuffled = [...aiPokemonPool].sort(() => Math.random() - 0.5);
-        
-        for (let i = 0; i < Math.min(settings.teamSize, shuffled.length); i++) {
-            const pokemon = shuffled[i];
-            const match = pokemon.url.match(/\/pokemon\/(\d+)\//);
-            const id = match ? match[1] : '1';
+        try {
+            const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemonId}`);
+            if (!response.ok) throw new Error('Pokemon not found');
             
-            aiTeam.push({
-                id: id,
+            const pokemon = await response.json();
+            
+            // Get moves (filter to get reasonable moveset)
+            const availableMoves = pokemon.moves
+                .filter(moveData => {
+                    // Filter by learn method (level up, machine, etc.)
+                    return moveData.version_group_details.some(version => 
+                        version.move_learn_method.name === 'level-up' || 
+                        version.move_learn_method.name === 'machine'
+                    );
+                })
+                .slice(0, 20) // Limit to prevent too many API calls
+                .map(moveData => moveData.move);
+
+            // Fetch move details for a subset of moves
+            const movePromises = availableMoves
+                .slice(0, 8) // Limit to 8 moves, will select 4 later
+                .map(move => this.fetchMoveData(move.url.split('/').slice(-2, -1)[0]));
+            
+            const moves = await Promise.all(movePromises);
+            const validMoves = moves.filter(move => move && move.power > 0); // Only attacking moves
+
+            const pokemonData = {
+                id: pokemon.id,
                 name: pokemon.name,
-                sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`,
-                hp: 100,
-                maxHp: 100,
-                level: Math.floor(Math.random() * (settings.levelRange[1] - settings.levelRange[0] + 1)) + settings.levelRange[0],
-                fainted: false
-            });
+                types: pokemon.types.map(t => t.type.name),
+                stats: {
+                    hp: pokemon.stats.find(s => s.stat.name === 'hp').base_stat,
+                    attack: pokemon.stats.find(s => s.stat.name === 'attack').base_stat,
+                    defense: pokemon.stats.find(s => s.stat.name === 'defense').base_stat,
+                    speed: pokemon.stats.find(s => s.stat.name === 'speed').base_stat,
+                    spAttack: pokemon.stats.find(s => s.stat.name === 'special-attack').base_stat,
+                    spDefense: pokemon.stats.find(s => s.stat.name === 'special-defense').base_stat
+                },
+                moves: this.selectBestMoves(validMoves, pokemon.types.map(t => t.type.name), 4),
+                sprite: pokemon.sprites.front_default,
+                height: pokemon.height,
+                weight: pokemon.weight
+            };
+
+            this.cache.pokemon.set(pokemonId, pokemonData);
+            return pokemonData;
+        } catch (error) {
+            console.error(`Error fetching Pokemon ${pokemonId}:`, error);
+            return null;
+        }
+    }
+
+    // Fetch move data from API
+    async fetchMoveData(moveId) {
+        if (this.cache.moves.has(moveId)) {
+            return this.cache.moves.get(moveId);
+        }
+
+        try {
+            const response = await fetch(`https://pokeapi.co/api/v2/move/${moveId}`);
+            if (!response.ok) throw new Error('Move not found');
+            
+            const move = await response.json();
+            
+            const moveData = {
+                id: move.id,
+                name: move.name,
+                type: move.type.name,
+                power: move.power,
+                accuracy: move.accuracy,
+                pp: move.pp,
+                priority: move.priority,
+                damageClass: move.damage_class.name, // physical, special, status
+                description: move.flavor_text_entries.find(entry => entry.language.name === 'en')?.flavor_text || move.name
+            };
+
+            this.cache.moves.set(moveId, moveData);
+            return moveData;
+        } catch (error) {
+            console.error(`Error fetching move ${moveId}:`, error);
+            return null;
+        }
+    }
+
+    // Fetch type effectiveness data
+    async fetchTypeEffectiveness(typeName) {
+        if (this.cache.types.has(typeName)) {
+            return this.cache.types.get(typeName);
+        }
+
+        try {
+            const response = await fetch(`https://pokeapi.co/api/v2/type/${typeName}`);
+            if (!response.ok) throw new Error('Type not found');
+            
+            const type = await response.json();
+            
+            const effectiveness = {
+                doubleDamageTo: type.damage_relations.double_damage_to.map(t => t.name),
+                halfDamageTo: type.damage_relations.half_damage_to.map(t => t.name),
+                noDamageTo: type.damage_relations.no_damage_to.map(t => t.name),
+                doubleDamageFrom: type.damage_relations.double_damage_from.map(t => t.name),
+                halfDamageFrom: type.damage_relations.half_damage_from.map(t => t.name),
+                noDamageFrom: type.damage_relations.no_damage_from.map(t => t.name)
+            };
+
+            this.cache.types.set(typeName, effectiveness);
+            return effectiveness;
+        } catch (error) {
+            console.error(`Error fetching type ${typeName}:`, error);
+            return null;
+        }
+    }
+
+    // Select best moves for a Pokemon (prefer STAB moves and variety)
+    selectBestMoves(moves, pokemonTypes, count = 4) {
+        if (moves.length <= count) return moves;
+
+        // Prioritize STAB moves (Same Type Attack Bonus)
+        const stabMoves = moves.filter(move => pokemonTypes.includes(move.type));
+        const nonStabMoves = moves.filter(move => !pokemonTypes.includes(move.type));
+
+        // Sort by power
+        stabMoves.sort((a, b) => (b.power || 0) - (a.power || 0));
+        nonStabMoves.sort((a, b) => (b.power || 0) - (a.power || 0));
+
+        // Select best combination
+        const selectedMoves = [];
+        
+        // Add best STAB moves first
+        selectedMoves.push(...stabMoves.slice(0, Math.min(2, count)));
+        
+        // Fill remaining slots with non-STAB moves
+        const remaining = count - selectedMoves.length;
+        selectedMoves.push(...nonStabMoves.slice(0, remaining));
+
+        return selectedMoves.slice(0, count);
+    }
+
+    // Calculate type effectiveness multiplier
+    async calculateTypeEffectiveness(attackingType, defendingTypes) {
+        const typeData = await this.fetchTypeEffectiveness(attackingType);
+        if (!typeData) return 1;
+
+        let multiplier = 1;
+        
+        defendingTypes.forEach(defType => {
+            if (typeData.doubleDamageTo.includes(defType)) {
+                multiplier *= 2;
+            } else if (typeData.halfDamageTo.includes(defType)) {
+                multiplier *= 0.5;
+            } else if (typeData.noDamageTo.includes(defType)) {
+                multiplier *= 0;
+            }
+        });
+
+        return multiplier;
+    }
+
+    // Enhanced damage calculation using real Pokemon formulas
+    async calculateDamage(attacker, defender, move) {
+        const level = attacker.level || 50;
+        const power = move.power || 50;
+        
+        // Determine if move is physical or special
+        const isPhysical = move.damageClass === 'physical';
+        const attackStat = isPhysical ? attacker.stats.attack : attacker.stats.spAttack;
+        const defenseStat = isPhysical ? defender.stats.defense : defender.stats.spDefense;
+        
+        // Base damage calculation (simplified Pokemon formula)
+        let damage = Math.floor(((2 * level / 5 + 2) * power * attackStat / defenseStat) / 50 + 2);
+        
+        // Type effectiveness
+        const effectiveness = await this.calculateTypeEffectiveness(move.type, defender.types);
+        damage = Math.floor(damage * effectiveness);
+        
+        // STAB (Same Type Attack Bonus)
+        if (attacker.types && attacker.types.includes(move.type)) {
+            damage = Math.floor(damage * 1.5);
         }
         
-        displayAITeam(difficulty);
-        showMessage(`AI team generated! Difficulty: ${difficulty}`, 'success');
+        // Random factor (85-100%)
+        const randomFactor = (Math.random() * 0.15 + 0.85);
+        damage = Math.floor(damage * randomFactor);
         
-    } catch (error) {
-        console.error('Error generating AI team:', error);
-        showMessage('Error generating AI team. Please try again.', 'error');
+        return {
+            damage: Math.max(1, damage),
+            effectiveness,
+            isCritical: Math.random() < 0.0625 // 1/16 chance for critical hit
+        };
+    }
+
+    // Get effectiveness message
+    getEffectivenessMessage(multiplier) {
+        if (multiplier > 1) return "It's super effective!";
+        if (multiplier < 1 && multiplier > 0) return "It's not very effective...";
+        if (multiplier === 0) return "It had no effect!";
+        return "";
     }
 }
 
-function displayAITeam(difficulty) {
-    const aiTeamDisplay = document.getElementById('ai-team-display');
-    const aiTeamGrid = document.getElementById('ai-team-grid');
+// Initialize the API battle system
+const pokemonAPI = new PokemonAPIBattleSystem();
+
+// Enhanced functions using the API
+async function initializePokemonWithAPI(pokemon) {
+    showMessage('Loading Pokemon data from API...', 'info');
     
-    aiTeamGrid.innerHTML = aiTeam.map(pokemon => `
-        <div class="team-pokemon">
-            <img src="${pokemon.sprite}" alt="${pokemon.name}" onerror="this.src='https://via.placeholder.com/64?text=No+Image'">
-            <div class="name">${pokemon.name}</div>
-            <div style="font-size: 10px; color: #666;">Lv. ${pokemon.level}</div>
-        </div>
-    `).join('');
+    const apiData = await pokemonAPI.fetchPokemonData(pokemon.id);
+    if (!apiData) {
+        // Fallback to basic data if API fails
+        return {
+            ...pokemon,
+            types: ['normal'],
+            stats: { hp: 100, attack: 100, defense: 100, speed: 100, spAttack: 100, spDefense: 100 },
+            moves: [
+                { name: 'Tackle', type: 'normal', power: 40, accuracy: 100 },
+                { name: 'Quick Attack', type: 'normal', power: 40, accuracy: 100 },
+                { name: 'Body Slam', type: 'normal', power: 85, accuracy: 100 },
+                { name: 'Double-Edge', type: 'normal', power: 120, accuracy: 100 }
+            ]
+        };
+    }
     
-    aiTeamDisplay.style.display = 'block';
-    
-    // Hide difficulty buttons
-    document.getElementById('ai-setup').style.display = 'none';
+    return {
+        ...pokemon,
+        ...apiData,
+        hp: pokemon.hp || 100,
+        maxHp: pokemon.maxHp || 100,
+        level: pokemon.level || 50,
+        fainted: pokemon.fainted || false
+    };
 }
 
-// Battle System
-function initializeBattle() {
-    // Initialize battle state
-    battleState = {
-        turn: 1,
-        phase: 'player',
-        playerActivePokemon: 0,
-        aiActivePokemon: 0,
-        playerTeam: selectedPokemon.map(p => ({
+// Enhanced battle initialization with API data
+async function initializeBattleWithAPI() {
+    showMessage('Initializing battle with Pokemon API data...', 'info', true);
+    
+    try {
+        // Initialize player team
+        const playerTeamPromises = selectedPokemon.map(p => initializePokemonWithAPI({
             ...p,
             hp: 100,
             maxHp: 100,
             level: 50,
             fainted: false
-        })),
-        aiTeam: [...aiTeam],
-        battleLog: []
-    };
-    
-    // Show battle arena
-    document.getElementById('battle-arena').style.display = 'block';
-    document.getElementById('ai-challenge').style.display = 'none';
-    
-    // Setup battle display
-    updateBattleDisplay();
-    addToBattleLog('Battle begins!');
-    addToBattleLog(`${battleState.playerTeam[0].name} vs ${battleState.aiTeam[0].name}!`);
-    
-    // Setup battle controls
-    setupBattleControls();
+        }));
+        
+        // Initialize AI team
+        const aiTeamPromises = aiTeam.map(p => initializePokemonWithAPI(p));
+        
+        battleState = {
+            turn: 1,
+            phase: 'player',
+            playerActivePokemon: 0,
+            aiActivePokemon: 0,
+            playerTeam: await Promise.all(playerTeamPromises),
+            aiTeam: await Promise.all(aiTeamPromises),
+            battleLog: []
+        };
+        
+        // Show battle arena
+        document.getElementById('battle-arena').style.display = 'block';
+        document.getElementById('ai-challenge').style.display = 'none';
+        
+        updateBattleDisplay();
+        addToBattleLog('Battle begins!');
+        addToBattleLog(`${battleState.playerTeam[0].name} vs ${battleState.aiTeam[0].name}!`);
+        
+        setupAPIBattleControls();
+        hideMessage();
+        
+    } catch (error) {
+        console.error('Error initializing battle:', error);
+        showMessage('Error loading Pokemon data. Using fallback data.', 'warning');
+        // Fallback to basic battle system
+        initializeBattle();
+    }
 }
 
-function setupBattleControls() {
-    document.getElementById('attack-btn').addEventListener('click', () => playerAttack());
-    document.getElementById('defend-btn').addEventListener('click', () => playerDefend());
-    document.getElementById('switch-btn').addEventListener('click', () => showSwitchMenu());
-}
-
-function updateBattleDisplay() {
-    // Update battle status
-    document.getElementById('battle-turn').textContent = `Turn ${battleState.turn}`;
-    document.getElementById('battle-phase').textContent = `${battleState.phase === 'player' ? 'Your' : 'AI'} Turn`;
-    
-    // Update player team display
-    const playerDisplay = document.getElementById('player-pokemon-display');
-    playerDisplay.innerHTML = battleState.playerTeam.map((pokemon, index) => `
-        <div class="battle-pokemon ${index === battleState.playerActivePokemon ? 'active' : ''} ${pokemon.fainted ? 'fainted' : ''}">
-            <img src="${pokemon.sprite}" alt="${pokemon.name}">
-            <div class="name">${pokemon.name}</div>
-            <div class="hp-bar">
-                <div class="hp-fill" style="width: ${(pokemon.hp / pokemon.maxHp) * 100}%"></div>
-            </div>
-            <div style="font-size: 10px;">${pokemon.hp}/${pokemon.maxHp} HP</div>
-        </div>
-    `).join('');
-    
-    // Update AI team display
-    const aiDisplay = document.getElementById('ai-pokemon-display');
-    aiDisplay.innerHTML = battleState.aiTeam.map((pokemon, index) => `
-        <div class="battle-pokemon ${index === battleState.aiActivePokemon ? 'active' : ''} ${pokemon.fainted ? 'fainted' : ''}">
-            <img src="${pokemon.sprite}" alt="${pokemon.name}">
-            <div class="name">${pokemon.name}</div>
-            <div class="hp-bar">
-                <div class="hp-fill" style="width: ${(pokemon.hp / pokemon.maxHp) * 100}%"></div>
-            </div>
-            <div style="font-size: 10px;">${pokemon.hp}/${pokemon.maxHp} HP</div>
-        </div>
-    `).join('');
-    
-    // Update button states
-    const canAct = battleState.phase === 'player' && !battleState.playerTeam[battleState.playerActivePokemon].fainted;
-    document.getElementById('attack-btn').disabled = !canAct;
-    document.getElementById('defend-btn').disabled = !canAct;
-    document.getElementById('switch-btn').disabled = !canAct || battleState.playerTeam.filter(p => !p.fainted).length <= 1;
-}
-
-function addToBattleLog(message) {
-    battleState.battleLog.push(message);
-    const log = document.getElementById('battle-log');
-    log.innerHTML = battleState.battleLog.slice(-10).map(msg => `<div>${msg}</div>`).join('');
-    log.scrollTop = log.scrollHeight;
-}
-
-function playerAttack() {
+// Enhanced player attack with API data
+async function playerAttackWithAPI(moveIndex) {
     const playerPokemon = battleState.playerTeam[battleState.playerActivePokemon];
     const aiPokemon = battleState.aiTeam[battleState.aiActivePokemon];
+    const selectedMove = playerPokemon.moves[moveIndex];
     
-    const damage = Math.floor(Math.random() * 30) + 15;
-    aiPokemon.hp = Math.max(0, aiPokemon.hp - damage);
+    // Accuracy check
+    const accuracyRoll = Math.random() * 100;
+    if (accuracyRoll > selectedMove.accuracy) {
+        addToBattleLog(`${playerPokemon.name}'s ${selectedMove.name} missed!`);
+        battleState.phase = 'ai';
+        updateBattleDisplay();
+        setTimeout(() => aiTurnWithAPI(), 1500);
+        return;
+    }
     
-    addToBattleLog(`${playerPokemon.name} attacks ${aiPokemon.name} for ${damage} damage!`);
+    // Calculate damage using API data
+    const damageResult = await pokemonAPI.calculateDamage(playerPokemon, aiPokemon, selectedMove);
+    let finalDamage = damageResult.damage;
+    
+    // Critical hit
+    if (damageResult.isCritical) {
+        finalDamage = Math.floor(finalDamage * 1.5);
+        addToBattleLog("A critical hit!");
+    }
+    
+    aiPokemon.hp = Math.max(0, aiPokemon.hp - finalDamage);
+    
+    addToBattleLog(`${playerPokemon.name} used ${selectedMove.name}!`);
+    addToBattleLog(`${aiPokemon.name} takes ${finalDamage} damage!`);
+    
+    // Effectiveness message
+    const effectMessage = pokemonAPI.getEffectivenessMessage(damageResult.effectiveness);
+    if (effectMessage) {
+        addToBattleLog(effectMessage);
+    }
     
     if (aiPokemon.hp === 0) {
         aiPokemon.fainted = true;
         addToBattleLog(`${aiPokemon.name} fainted!`);
         
-        // Check if AI has other Pokemon
         const alivePokemon = battleState.aiTeam.findIndex(p => !p.fainted);
         if (alivePokemon !== -1) {
             battleState.aiActivePokemon = alivePokemon;
@@ -414,51 +345,11 @@ function playerAttack() {
     
     battleState.phase = 'ai';
     updateBattleDisplay();
-    
-    setTimeout(() => aiTurn(), 1500);
+    setTimeout(() => aiTurnWithAPI(), 1500);
 }
 
-function playerDefend() {
-    const playerPokemon = battleState.playerTeam[battleState.playerActivePokemon];
-    addToBattleLog(`${playerPokemon.name} takes a defensive stance!`);
-    
-    battleState.phase = 'ai';
-    updateBattleDisplay();
-    
-    setTimeout(() => aiTurn(), 1500);
-}
-
-function showSwitchMenu() {
-    const switchOptions = document.getElementById('switch-options');
-    const availablePokemon = battleState.playerTeam
-        .map((pokemon, index) => ({ pokemon, index }))
-        .filter(({ pokemon, index }) => !pokemon.fainted && index !== battleState.playerActivePokemon);
-    
-    switchOptions.innerHTML = availablePokemon.map(({ pokemon, index }) => `
-        <div class="switch-option" onclick="switchPokemon(${index})">
-            ${pokemon.name} (${pokemon.hp}/${pokemon.maxHp} HP)
-        </div>
-    `).join('');
-    
-    switchOptions.style.display = switchOptions.style.display === 'none' ? 'block' : 'none';
-}
-
-function switchPokemon(index) {
-    const oldPokemon = battleState.playerTeam[battleState.playerActivePokemon];
-    const newPokemon = battleState.playerTeam[index];
-    
-    battleState.playerActivePokemon = index;
-    addToBattleLog(`${oldPokemon.name} returns! Go ${newPokemon.name}!`);
-    
-    document.getElementById('switch-options').style.display = 'none';
-    
-    battleState.phase = 'ai';
-    updateBattleDisplay();
-    
-    setTimeout(() => aiTurn(), 1500);
-}
-
-function aiTurn() {
+// Enhanced AI turn with API data
+async function aiTurnWithAPI() {
     const aiPokemon = battleState.aiTeam[battleState.aiActivePokemon];
     const playerPokemon = battleState.playerTeam[battleState.playerActivePokemon];
     
@@ -469,28 +360,56 @@ function aiTurn() {
         return;
     }
     
-    // Simple AI logic - mostly attack, sometimes defend
-    const action = Math.random() > 0.2 ? 'attack' : 'defend';
+    // AI move selection - prefer effective moves
+    let bestMove = aiPokemon.moves[0];
+    let bestEffectiveness = 0;
     
-    if (action === 'attack') {
-        const damage = Math.floor(Math.random() * 25) + 10;
-        playerPokemon.hp = Math.max(0, playerPokemon.hp - damage);
-        
-        addToBattleLog(`${aiPokemon.name} attacks ${playerPokemon.name} for ${damage} damage!`);
-        
-        if (playerPokemon.hp === 0) {
-            playerPokemon.fainted = true;
-            addToBattleLog(`${playerPokemon.name} fainted!`);
-            
-            // Auto-switch to next available Pokemon
-            const alivePokemon = battleState.playerTeam.findIndex(p => !p.fainted);
-            if (alivePokemon !== -1) {
-                battleState.playerActivePokemon = alivePokemon;
-                addToBattleLog(`Go ${battleState.playerTeam[alivePokemon].name}!`);
-            }
+    for (const move of aiPokemon.moves) {
+        const effectiveness = await pokemonAPI.calculateTypeEffectiveness(move.type, playerPokemon.types);
+        if (effectiveness > bestEffectiveness) {
+            bestEffectiveness = effectiveness;
+            bestMove = move;
         }
-    } else {
-        addToBattleLog(`${aiPokemon.name} takes a defensive stance!`);
+    }
+    
+    // Accuracy check
+    const accuracyRoll = Math.random() * 100;
+    if (accuracyRoll > bestMove.accuracy) {
+        addToBattleLog(`${aiPokemon.name}'s ${bestMove.name} missed!`);
+        battleState.phase = 'player';
+        battleState.turn++;
+        updateBattleDisplay();
+        return;
+    }
+    
+    // Calculate damage
+    const damageResult = await pokemonAPI.calculateDamage(aiPokemon, playerPokemon, bestMove);
+    let finalDamage = damageResult.damage;
+    
+    if (damageResult.isCritical) {
+        finalDamage = Math.floor(finalDamage * 1.5);
+        addToBattleLog("A critical hit!");
+    }
+    
+    playerPokemon.hp = Math.max(0, playerPokemon.hp - finalDamage);
+    
+    addToBattleLog(`${aiPokemon.name} used ${bestMove.name}!`);
+    addToBattleLog(`${playerPokemon.name} takes ${finalDamage} damage!`);
+    
+    const effectMessage = pokemonAPI.getEffectivenessMessage(damageResult.effectiveness);
+    if (effectMessage) {
+        addToBattleLog(effectMessage);
+    }
+    
+    if (playerPokemon.hp === 0) {
+        playerPokemon.fainted = true;
+        addToBattleLog(`${playerPokemon.name} fainted!`);
+        
+        const alivePokemon = battleState.playerTeam.findIndex(p => !p.fainted);
+        if (alivePokemon !== -1) {
+            battleState.playerActivePokemon = alivePokemon;
+            addToBattleLog(`Go ${battleState.playerTeam[alivePokemon].name}!`);
+        }
     }
     
     if (checkBattleEnd()) return;
@@ -500,125 +419,94 @@ function aiTurn() {
     updateBattleDisplay();
 }
 
-function checkBattleEnd() {
-    const playerAlive = battleState.playerTeam.some(p => !p.fainted);
-    const aiAlive = battleState.aiTeam.some(p => !p.fainted);
+// Setup battle controls for API system
+function setupAPIBattleControls() {
+    const controlsDiv = document.querySelector('.battle-controls');
+    controlsDiv.innerHTML = `
+        <div id="move-buttons" class="move-selection">
+            <!-- Move buttons will be generated dynamically -->
+        </div>
+        <button id="defend-btn" class="battle-action">Defend</button>
+        <button id="switch-btn" class="battle-action">Switch Pokemon</button>
+        <div id="switch-options" class="switch-menu" style="display: none;"></div>
+    `;
     
-    if (!playerAlive || !aiAlive) {
-        const resultDiv = document.getElementById('battle-result');
-        const titleEl = document.getElementById('result-title');
-        const messageEl = document.getElementById('result-message');
-        
-        if (!aiAlive) {
-            // Player wins
-            titleEl.textContent = 'Victory!';
-            messageEl.textContent = 'Congratulations! You defended your gym successfully!';
-            resultDiv.className = 'battle-result victory';
-        } else {
-            // Player loses
-            titleEl.textContent = 'Defeat!';
-            messageEl.textContent = 'The challenger has defeated your gym! Better luck next time!';
-            resultDiv.className = 'battle-result defeat';
-        }
-        
-        resultDiv.style.display = 'block';
-        
-        // Disable battle controls
-        document.getElementById('attack-btn').disabled = true;
-        document.getElementById('defend-btn').disabled = true;
-        document.getElementById('switch-btn').disabled = true;
-        
-        return true;
-    }
+    document.getElementById('defend-btn').addEventListener('click', () => playerDefend());
+    document.getElementById('switch-btn').addEventListener('click', () => showSwitchMenu());
     
-    return false;
+    updateAPIMoveButtons();
 }
 
-function resetToAISelection() {
-    // Reset battle state
-    battleState = {
-        turn: 1,
-        phase: 'player',
-        playerActivePokemon: 0,
-        aiActivePokemon: 0,
-        playerTeam: [],
-        aiTeam: [],
-        battleLog: []
-    };
+// Update move buttons with API data
+function updateAPIMoveButtons() {
+    const activePokemon = battleState.playerTeam[battleState.playerActivePokemon];
+    const moveButtonsDiv = document.getElementById('move-buttons');
     
-    // Hide battle arena
-    document.getElementById('battle-arena').style.display = 'none';
+    if (!activePokemon || !activePokemon.moves) return;
     
-    // Show AI challenge section
-    document.getElementById('ai-challenge').style.display = 'block';
-    document.getElementById('ai-setup').style.display = 'block';
-    document.getElementById('ai-team-display').style.display = 'none';
-    document.getElementById('battle-result').style.display = 'none';
-    
-    // Clear AI team
-    aiTeam = [];
+    moveButtonsDiv.innerHTML = activePokemon.moves.map((move, index) => `
+        <button class="move-btn ${move.type}" onclick="playerAttackWithAPI(${index})" 
+                ${battleState.phase !== 'player' ? 'disabled' : ''}>
+            <div class="move-name">${move.name.charAt(0).toUpperCase() + move.name.slice(1).replace('-', ' ')}</div>
+            <div class="move-details">
+                <span class="move-type">${move.type.toUpperCase()}</span>
+                <span class="move-power">PWR: ${move.power || '--'}</span>
+                <span class="move-accuracy">ACC: ${move.accuracy}%</span>
+            </div>
+        </button>
+    `).join('');
 }
 
-// Setup confirm button event handler
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById("setup-confirm").onclick = async function() {
-        const button = this;
-        const regionInput = document.getElementById("region-select").value;
-        const region = regionInput.toLowerCase();
-        const type = document.getElementById("type-select").value;
-        const gymNumber = parseInt(document.getElementById("gym-number-select").value, 10);
-        
-        // Reset previous selection
-        selectedPokemon = [];
-        hideMessage();
-        
-        // Disable button during loading
-        button.disabled = true;
-        button.textContent = 'Loading...';
-        
-        try {
-            const maxGen = regionGenMap[region];
-            if (!maxGen) {
-                throw new Error(`Invalid region: ${region}`);
-            }
-            
-            maxPokemonAllowed = gymPokemonLimit[gymNumber - 1];
-            
-            // Capitalize region name for display
-            const regionDisplay = region.charAt(0).toUpperCase() + region.slice(1);
-            showMessage(`Loading ${type} Pokémon from ${regionDisplay}...`, 'info', true);
-            
-            // Show the pokemon selection container with loading state
-            const selectionDiv = document.getElementById('pokemon-selection');
-            selectionDiv.style.display = 'block';
-            selectionDiv.innerHTML = '<div class="loading">Loading Pokémon...</div>';
-            
-            // Get and filter Pokemon
-            const pokemonList = await getFilteredPokemon(maxGen, type);
-            
-            if (pokemonList.length === 0) {
-                showMessage(`No ${type} type Pokémon found in ${regionDisplay}!`, 'error', true);
-                selectionDiv.style.display = 'none';
-            } else {
-                // Display selection UI
-                displayPokemonSelection(pokemonList, maxPokemonAllowed);
-                
-                // Check if we're using mock data
-                const isMockData = pokemonList.some(p => p.name === 'ditto' || p.name === 'eevee');
-                if (isMockData) {
-                    showMessage(`API unavailable - showing sample Pokémon. Choose up to ${maxPokemonAllowed}!`, 'warning');
-                } else {
-                    showMessage(`Found ${pokemonList.length} ${type} type Pokémon. Choose up to ${maxPokemonAllowed}!`, 'success');
-                }
-            }
-        } catch (error) {
-            console.error('Error loading Pokemon:', error);
-            showMessage('Error loading Pokémon. Please try again.', 'error', true);
-            document.getElementById('pokemon-selection').style.display = 'none';
-        } finally {
-            // Re-enable button
-            button.disabled = false;
-            button.textContent = 'Confirm Setup';
-        }
-    };
-});
+// Update the battle display to show Pokemon types
+function updateBattleDisplayWithTypes() {
+    // Update battle status
+    document.getElementById('battle-turn').textContent = `Turn ${battleState.turn}`;
+    document.getElementById('battle-phase').textContent = `${battleState.phase === 'player' ? 'Your' : 'AI'} Turn`;
+    
+    // Update player team display
+    const playerDisplay = document.getElementById('player-pokemon-display');
+    playerDisplay.innerHTML = battleState.playerTeam.map((pokemon, index) => `
+        <div class="battle-pokemon ${index === battleState.playerActivePokemon ? 'active' : ''} ${pokemon.fainted ? 'fainted' : ''}">
+            <img src="${pokemon.sprite}" alt="${pokemon.name}">
+            <div class="pokemon-info">
+                <div class="name">${pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1)}</div>
+                <div class="pokemon-types">
+                    ${pokemon.types ? pokemon.types.map(type => `<span class="type-badge ${type}">${type}</span>`).join('') : ''}
+                </div>
+                <div class="hp-bar">
+                    <div class="hp-fill" style="width: ${(pokemon.hp / pokemon.maxHp) * 100}%"></div>
+                </div>
+                <div style="font-size: 10px;">${pokemon.hp}/${pokemon.maxHp} HP</div>
+            </div>
+        </div>
+    `).join('');
+    
+    // Update AI team display
+    const aiDisplay = document.getElementById('ai-pokemon-display');
+    aiDisplay.innerHTML = battleState.aiTeam.map((pokemon, index) => `
+        <div class="battle-pokemon ${index === battleState.aiActivePokemon ? 'active' : ''} ${pokemon.fainted ? 'fainted' : ''}">
+            <img src="${pokemon.sprite}" alt="${pokemon.name}">
+            <div class="pokemon-info">
+                <div class="name">${pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1)}</div>
+                <div class="pokemon-types">
+                    ${pokemon.types ? pokemon.types.map(type => `<span class="type-badge ${type}">${type}</span>`).join('') : ''}
+                </div>
+                <div class="hp-bar">
+                    <div class="hp-fill" style="width: ${(pokemon.hp / pokemon.maxHp) * 100}%"></div>
+                </div>
+                <div style="font-size: 10px;">${pokemon.hp}/${pokemon.maxHp} HP</div>
+            </div>
+        </div>
+    `).join('');
+    
+    // Update button states and move buttons
+    const canAct = battleState.phase === 'player' && !battleState.playerTeam[battleState.playerActivePokemon].fainted;
+    document.getElementById('defend-btn').disabled = !canAct;
+    document.getElementById('switch-btn').disabled = !canAct || battleState.playerTeam.filter(p => !p.fainted).length <= 1;
+    
+    updateAPIMoveButtons();
+}
+
+// Replace the original updateBattleDisplay function
+const originalUpdateBattleDisplay = updateBattleDisplay;
+updateBattleDisplay = updateBattleDisplayWithTypes;
